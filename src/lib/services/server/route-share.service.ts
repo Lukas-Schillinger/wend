@@ -4,7 +4,7 @@ import type {
 	RouteShareWithMailRecord,
 	RouteWithDetails
 } from '$lib/schemas';
-import { db } from '$lib/server/db';
+import { db, withTransaction } from '$lib/server/db';
 import { mailRecords, routeShares, routes } from '$lib/server/db/schema';
 import { mailService } from '$lib/services/server/mail.service.js';
 import { and, eq, isNull } from 'drizzle-orm';
@@ -244,17 +244,19 @@ export class RouteShareService {
 			);
 		}
 
-		if (!existingShare.revoked_at) {
-			await this.revokeShare(shareId, organizationId);
-		}
+		return withTransaction(async () => {
+			if (!existingShare.revoked_at) {
+				await this.revokeShare(shareId, organizationId);
+			}
 
-		return this.createAndSendEmailShare(
-			existingShare.route_id,
-			mailRecord.to_email,
-			organizationId,
-			createdBy,
-			origin
-		);
+			return this.createAndSendEmailShare(
+				existingShare.route_id,
+				mailRecord.to_email,
+				organizationId,
+				createdBy,
+				origin
+			);
+		});
 	}
 
 	/**
@@ -289,28 +291,30 @@ export class RouteShareService {
 		createdBy: string,
 		origin: string
 	): Promise<RouteShareWithMailRecord> {
-		const { share, token } = await this.createEmailShare(
-			routeId,
-			recipientEmail,
-			organizationId,
-			createdBy
-		);
+		return withTransaction(async () => {
+			const { share, token } = await this.createEmailShare(
+				routeId,
+				recipientEmail,
+				organizationId,
+				createdBy
+			);
 
-		const routeDetails = await routeService.getRouteWithDetails(
-			routeId,
-			organizationId
-		);
+			const routeDetails = await routeService.getRouteWithDetails(
+				routeId,
+				organizationId
+			);
 
-		await mailService.sendRouteShareEmail(
-			share,
-			recipientEmail,
-			token,
-			routeDetails.map.title,
-			routeDetails.driver.name,
-			origin
-		);
+			await mailService.sendRouteShareEmail(
+				share,
+				recipientEmail,
+				token,
+				routeDetails.map.title,
+				routeDetails.driver.name,
+				origin
+			);
 
-		return this.getShareWithMailRecord(share.id, organizationId);
+			return this.getShareWithMailRecord(share.id, organizationId);
+		});
 	}
 }
 

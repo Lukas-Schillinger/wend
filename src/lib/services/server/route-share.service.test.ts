@@ -754,6 +754,33 @@ describe('RouteShareService', () => {
 			});
 		});
 
+		it('rolls back share record when email sending fails', async () => {
+			await withTestTransaction(async () => {
+				const { organization, user, route } = await createProRouteEnvironment();
+
+				mockMailService.sendRouteShareEmail.mockRejectedValueOnce(
+					new Error('Email provider unavailable')
+				);
+
+				await expect(
+					routeShareService.createAndSendEmailShare(
+						route.id,
+						'recipient@example.com',
+						organization.id,
+						user.id,
+						'https://example.com'
+					)
+				).rejects.toThrow('Email provider unavailable');
+
+				// Verify no orphaned share was created
+				const shares = await routeShareService.getSharesForRoute(
+					route.id,
+					organization.id
+				);
+				expect(shares).toHaveLength(0);
+			});
+		});
+
 		it('blocks for Free plan users', async () => {
 			await withTestTransaction(async () => {
 				const { organization, user } = await createBillingTestEnvironment();
