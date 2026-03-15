@@ -1,0 +1,1 @@
+CREATE INDEX "stops_map_location_idx" ON "stops" USING btree ("map_id","location_id");
