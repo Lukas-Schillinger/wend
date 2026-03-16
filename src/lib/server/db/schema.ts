@@ -551,40 +551,50 @@ export const files = pgTable(
 	]
 );
 
-export const optimizationJobs = pgTable('optimization_jobs', {
-	id,
-	organization_id: orgId.references(() => organizations.id, {
-		onDelete: 'cascade'
-	}),
-	status: varchar('status', { length: 20 })
-		.notNull()
-		.$type<
-			| 'pending'
-			| 'running'
-			| 'completing'
-			| 'completed'
-			| 'failed'
-			| 'cancelled'
-		>(),
-	matrix_id: uuid()
-		.references(() => matrices.id, { onDelete: 'cascade' })
-		.notNull(),
-	map_id: uuid()
-		.references(() => maps.id, { onDelete: 'cascade' })
-		.notNull(),
-	depot_id: uuid()
-		.references(() => depots.id, { onDelete: 'cascade' })
-		.notNull(),
-	error_message: text('error_message'),
-	created_at: createdAt,
-	created_by: uuid('created_by').references(() => users.id, {
-		onDelete: 'set null'
-	}),
-	updated_at: updatedAt,
-	updated_by: uuid('updated_by').references(() => users.id, {
-		onDelete: 'set null'
-	})
-});
+export const optimizationJobs = pgTable(
+	'optimization_jobs',
+	{
+		id,
+		organization_id: orgId.references(() => organizations.id, {
+			onDelete: 'cascade'
+		}),
+		status: varchar('status', { length: 20 })
+			.notNull()
+			.$type<
+				| 'pending'
+				| 'running'
+				| 'completing'
+				| 'completed'
+				| 'failed'
+				| 'cancelled'
+			>(),
+		matrix_id: uuid()
+			.references(() => matrices.id, { onDelete: 'cascade' })
+			.notNull(),
+		map_id: uuid()
+			.references(() => maps.id, { onDelete: 'cascade' })
+			.notNull(),
+		depot_id: uuid()
+			.references(() => depots.id, { onDelete: 'cascade' })
+			.notNull(),
+		error_message: text('error_message'),
+		created_at: createdAt,
+		created_by: uuid('created_by').references(() => users.id, {
+			onDelete: 'set null'
+		}),
+		updated_at: updatedAt,
+		updated_by: uuid('updated_by').references(() => users.id, {
+			onDelete: 'set null'
+		})
+	},
+	(t) => [
+		index('optimization_jobs_org_map_status_idx').on(
+			t.organization_id,
+			t.map_id,
+			t.status
+		)
+	]
+);
 
 export const mailRecords = pgTable(
 	'mail_records',
