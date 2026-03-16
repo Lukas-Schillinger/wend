@@ -1,0 +1,1 @@
+CREATE INDEX "optimization_jobs_org_map_status_idx" ON "optimization_jobs" USING btree ("organization_id","map_id","status");
