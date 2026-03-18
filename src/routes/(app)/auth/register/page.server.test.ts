@@ -180,7 +180,11 @@ describe('Registration Server Actions', () => {
 	describe('Server Actions', () => {
 		const createMockEvent = () => ({
 			request: new Request('http://localhost', { method: 'POST' }),
-			locals: { user: null, session: null },
+			locals: {
+				user: null,
+				session: null,
+				log: { error: vi.fn(), info: vi.fn(), warn: vi.fn() }
+			},
 			url: { origin: 'http://localhost:5173' }
 		});
 
