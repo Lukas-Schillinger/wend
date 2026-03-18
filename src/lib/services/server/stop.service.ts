@@ -1,3 +1,4 @@
+import type { Location } from '$lib/schemas/location';
 import type {
 	CreateStop,
 	ReorderStops,
@@ -186,17 +187,18 @@ export class StopService {
 		organizationId: string,
 		userId: string
 	): Promise<StopWithLocation> {
-		let locationId = data.location_id;
+		let location: Location | undefined;
 
 		// Create location if data is provided
-		if (data.location && !locationId) {
-			const location = await locationService.createLocation(
+		if (data.location && !data.location_id) {
+			location = await locationService.createLocation(
 				data.location,
 				organizationId,
 				userId
 			);
-			locationId = location.id;
 		}
+
+		const locationId = location?.id ?? data.location_id;
 
 		if (!locationId) {
 			throw ServiceError.validation(
@@ -204,7 +206,12 @@ export class StopService {
 			);
 		}
 
-		await locationService.getLocationById(locationId, organizationId);
+		if (!location) {
+			location = await locationService.getLocationById(
+				locationId,
+				organizationId
+			);
+		}
 
 		// Verify map ownership
 		const [map] = await db
@@ -235,7 +242,7 @@ export class StopService {
 			})
 			.returning();
 
-		return this.getStopById(stop.id, organizationId);
+		return { stop, location };
 	}
 
 	async updateStop(
@@ -244,16 +251,20 @@ export class StopService {
 		organizationId: string,
 		userId: string
 	): Promise<StopWithLocation> {
-		const { stop } = await this.getStopById(stopId, organizationId);
+		const { stop, location: existingLocation } = await this.getStopById(
+			stopId,
+			organizationId
+		);
 
 		const oldDriverId = stop.driver_id;
 		const driverChanged = 'driver_id' in data && data.driver_id !== oldDriverId;
 
 		let locationId = stop.location_id;
+		let location = existingLocation;
 		let locationChanged = false;
 
 		if (data.location) {
-			const location = await locationService.createLocation(
+			location = await locationService.createLocation(
 				data.location,
 				organizationId,
 				userId
@@ -261,7 +272,10 @@ export class StopService {
 			locationId = location.id;
 			locationChanged = true;
 		} else if (data.location_id && data.location_id !== stop.location_id) {
-			await locationService.getLocationById(data.location_id, organizationId);
+			location = await locationService.getLocationById(
+				data.location_id,
+				organizationId
+			);
 			locationId = data.location_id;
 			locationChanged = true;
 		}
@@ -303,7 +317,7 @@ export class StopService {
 			}
 		}
 
-		return this.getStopById(updatedStop.id, organizationId);
+		return { stop: updatedStop, location };
 	}
 
 	/**
